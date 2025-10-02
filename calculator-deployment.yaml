@@ -1,11 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: calculator-app
-  labels:
-    app: calculator
+  name: calculator-deployment
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: calculator
@@ -16,41 +14,6 @@ spec:
     spec:
       containers:
       - name: calculator
-        image: calculator-app:latest
-        imagePullPolicy: Never
+        image: REPLACE_WITH_YOUR_DOCKER_IMAGE
         ports:
         - containerPort: 5000
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 5000
-          initialDelaySeconds: 10
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 5000
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        resources:
-          requests:
-            memory: "64Mi"
-            cpu: "50m"
-          limits:
-            memory: "128Mi"
-            cpu: "100m"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: calculator-service
-  labels:
-    app: calculator
-spec:
-  type: NodePort
-  ports:
-  - port: 5000
-    targetPort: 5000
-    nodePort: 30080
-  selector:
-    app: calculator
