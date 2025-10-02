@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator - Kubernetes Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .calculator {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 375px;
+        }
+
+        .display {
+            background: #F5F5F5;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .total-expression {
+            font-size: 16px;
+            color: #666;
+            text-align: right;
+            min-height: 20px;
+        }
+
+        .current-expression {
+            font-size: 40px;
+            font-weight: bold;
+            color: #25265E;
+            text-align: right;
+            min-height: 50px;
+            overflow: hidden;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        button {
+            height: 70px;
+            border: none;
+            border-radius: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .number {
+            background: #FFFFFF;
+            color: #25265E;
+            border: 2px solid #f0f0f0;
+        }
+
+        .operator {
+            background: #F8FAFF;
+            color: #25265E;
+        }
+
+        .special {
+            background: #CCEDFF;
+            color: #25265E;
+        }
+
+        .equals {
+            background: #CCEDFF;
+            color: #25265E;
+            grid-column: span 2;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: white;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <div class="header">
+            <h1>🧮 Calculator</h1>
+            <p>Kubernetes Demo Application</p>
+        </div>
+        
+        <div class="calculator">
+            <div class="display">
+                <div class="total-expression" id="totalExpression"></div>
+                <div class="current-expression" id="currentExpression">0</div>
+            </div>
+            
+            <div class="buttons">
+                <button class="special" onclick="clearCalculator()">C</button>
+                <button class="special" onclick="squareNumber()">x²</button>
+                <button class="special" onclick="sqrtNumber()">√x</button>
+                <button class="operator" onclick="inputOperator('/')">÷</button>
+                
+                <button class="number" onclick="inputNumber('7')">7</button>
+                <button class="number" onclick="inputNumber('8')">8</button>
+                <button class="number" onclick="inputNumber('9')">9</button>
+                <button class="operator" onclick="inputOperator('*')">×</button>
+                
+                <button class="number" onclick="inputNumber('4')">4</button>
+                <button class="number" onclick="inputNumber('5')">5</button>
+                <button class="number" onclick="inputNumber('6')">6</button>
+                <button class="operator" onclick="inputOperator('-')">-</button>
+                
+                <button class="number" onclick="inputNumber('1')">1</button>
+                <button class="number" onclick="inputNumber('2')">2</button>
+                <button class="number" onclick="inputNumber('3')">3</button>
+                <button class="operator" onclick="inputOperator('+')">+</button>
+                
+                <button class="number" onclick="inputNumber('.')">.</button>
+                <button class="number" onclick="inputNumber('0')">0</button>
+                <button class="equals" onclick="calculateResult()">=</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentInput = '0';
+        let previousInput = '';
+        let operator = '';
+        let waitingForNewNumber = false;
+
+        function updateDisplay() {
+            document.getElementById('currentExpression').textContent = currentInput;
+            
+            let totalDisplay = '';
+            if (previousInput && operator) {
+                const opDisplay = operator.replace('*', '×').replace('/', '÷');
+                totalDisplay = previousInput + ' ' + opDisplay;
+            }
+            document.getElementById('totalExpression').textContent = totalDisplay;
+        }
+
+        function inputNumber(num) {
+            if (waitingForNewNumber) {
+                currentInput = num;
+                waitingForNewNumber = false;
+            } else {
+                currentInput = currentInput === '0' ? num : currentInput + num;
+            }
+            updateDisplay();
+        }
+
+        function inputOperator(op) {
+            if (previousInput && operator && !waitingForNewNumber) {
+                calculateResult();
+            }
+            
+            previousInput = currentInput;
+            operator = op;
+            waitingForNewNumber = true;
+            updateDisplay();
+        }
+
+        function clearCalculator() {
+            currentInput = '0';
+            previousInput = '';
+            operator = '';
+            waitingForNewNumber = false;
+            updateDisplay();
+        }
+
+        async function calculateResult() {
+            if (!previousInput || !operator) {
+                return;
+            }
+
+            const expression = previousInput + operator + currentInput;
+            
+            try {
+                const response = await fetch('/calculate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ expression: expression })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    currentInput = 'Error';
+                } else {
+                    currentInput = data.result.toString();
+                }
+                
+                previousInput = '';
+                operator = '';
+                waitingForNewNumber = true;
+                updateDisplay();
+                
+            } catch (error) {
+                currentInput = 'Error';
+                previousInput = '';
+                operator = '';
+                waitingForNewNumber = true;
+                updateDisplay();
+            }
+        }
+
+        function squareNumber() {
+            const num = parseFloat(currentInput);
+            if (isNaN(num)) return;
+            
+            currentInput = (num * num).toString();
+            waitingForNewNumber = true;
+            updateDisplay();
+        }
+
+        function sqrtNumber() {
+            const num = parseFloat(currentInput);
+            if (isNaN(num) || num < 0) {
+                currentInput = 'Error';
+            } else {
+                currentInput = Math.sqrt(num).toString();
+            }
+            waitingForNewNumber = true;
+            updateDisplay();
+        }
+
+        document.addEventListener('keydown', function(event) {
+            const key = event.key;
+            
+            if (key >= '0' && key <= '9' || key === '.') {
+                inputNumber(key);
+            } else if (['+', '-', '*', '/'].includes(key)) {
+                inputOperator(key);
+            } else if (key === 'Enter' || key === '=') {
+                calculateResult();
+            } else if (key === 'Escape' || key === 'c' || key === 'C') {
+                clearCalculator();
+            }
+        });
+
+        updateDisplay();
+    </script>
+</body>
+</html>
